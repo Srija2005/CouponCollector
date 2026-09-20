@@ -8,7 +8,9 @@ function Profile() {
   const [coupons, setCoupons] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Load user
+  // =========================
+  // LOAD USER
+  // =========================
   useEffect(() => {
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
@@ -23,17 +25,23 @@ function Profile() {
       setUser(userData);
     } catch (error) {
       console.error("User data error:", error);
-      localStorage.removeItem("user");
+
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("isLoggedIn");
+
       navigate("/login");
     }
   }, [navigate]);
 
-  // Load coupons
+  // =========================
+  // LOAD COUPONS
+  // =========================
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
+      navigate("/login");
       return;
     }
 
@@ -44,7 +52,8 @@ function Profile() {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${token}`
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
             }
           }
         );
@@ -74,7 +83,9 @@ function Profile() {
     loadCoupons();
   }, [navigate]);
 
-  // Delete coupon
+  // =========================
+  // DELETE COUPON
+  // =========================
   async function deleteCoupon(id) {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this coupon?"
@@ -86,13 +97,20 @@ function Profile() {
 
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      alert("Please login first.");
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await fetch(
         `http://localhost:5000/coupons/${id}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${token}`
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
           }
         }
       );
@@ -103,10 +121,23 @@ function Profile() {
         alert("Coupon deleted successfully");
 
         setCoupons((oldCoupons) =>
-          oldCoupons.filter((coupon) => coupon._id !== id)
+          oldCoupons.filter(
+            (coupon) => coupon._id !== id
+          )
         );
       } else {
-        alert(data.message || "Unable to delete coupon");
+        alert(
+          data.message ||
+          "Unable to delete coupon"
+        );
+
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("isLoggedIn");
+
+          navigate("/login");
+        }
       }
     } catch (error) {
       console.error("Delete error:", error);
@@ -114,7 +145,9 @@ function Profile() {
     }
   }
 
-  // Logout
+  // =========================
+  // LOGOUT
+  // =========================
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -123,6 +156,9 @@ function Profile() {
     navigate("/login");
   }
 
+  // =========================
+  // LOADING
+  // =========================
   if (!user) {
     return (
       <div className="profile-loading">
@@ -130,15 +166,20 @@ function Profile() {
       </div>
     );
   }
-const filteredCoupons = coupons.filter((coupon) =>
-  coupon.code.toLowerCase().includes(searchTerm.toLowerCase())
-);
+
+  // =========================
+  // SEARCH
+  // =========================
+  const filteredCoupons = coupons.filter((coupon) =>
+    (coupon.code || "")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="profile-page">
 
-      {/* =================================================
-          LEFT SIDE - PROFILE
-          ================================================= */}
+      {/* LEFT SIDE */}
 
       <aside className="profile-sidebar">
 
@@ -166,10 +207,10 @@ const filteredCoupons = coupons.filter((coupon) =>
         <div className="profile-buttons">
 
           <Link to="/">
-            <button>Home</button>
+            <button>
+              Home
+            </button>
           </Link>
-
-          
 
           <button onClick={handleLogout}>
             Logout
@@ -180,9 +221,7 @@ const filteredCoupons = coupons.filter((coupon) =>
       </aside>
 
 
-      {/* =================================================
-          RIGHT SIDE - AVAILABLE COUPONS
-          ================================================= */}
+      {/* RIGHT SIDE */}
 
       <main className="profile-coupons">
 
@@ -191,25 +230,51 @@ const filteredCoupons = coupons.filter((coupon) =>
         <p className="profile-coupon-subtitle">
           Find the latest coupons and discounts
         </p>
-<div className="coupon-search">
-  <input
-    type="text"
-    placeholder="Search coupon code..."
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-  />
-</div>
+
+
+        {/* SEARCH */}
+
+        <div className="coupon-search">
+
+          <input
+            type="text"
+            placeholder="Search coupon code..."
+            value={searchTerm}
+            onChange={(e) =>
+              setSearchTerm(e.target.value)
+            }
+          />
+
+        </div>
+
+
+        {/* NO COUPONS */}
+
         {coupons.length === 0 ? (
 
           <div className="no-profile-coupons">
 
-            <h2>No Coupons Available</h2>
+            <h2>
+              No Coupons Available
+            </h2>
 
             <p>
               You have not added any coupons yet.
             </p>
 
-           
+          </div>
+
+        ) : filteredCoupons.length === 0 ? (
+
+          <div className="no-profile-coupons">
+
+            <h2>
+              No Matching Coupons
+            </h2>
+
+            <p>
+              No coupon matches your search.
+            </p>
 
           </div>
 
@@ -231,14 +296,18 @@ const filteredCoupons = coupons.filter((coupon) =>
                 <div className="profile-coupon-details">
 
                   <p>
-                    <strong>Discount:</strong>{" "}
+                    <strong>
+                      Discount:
+                    </strong>{" "}
                     <span>
                       {coupon.discount}%
                     </span>
                   </p>
 
                   <p>
-                    <strong>Expiry Date:</strong>{" "}
+                    <strong>
+                      Expiry Date:
+                    </strong>{" "}
                     {coupon.expiryDate}
                   </p>
 
@@ -246,11 +315,18 @@ const filteredCoupons = coupons.filter((coupon) =>
 
                 <div className="profile-coupon-actions">
 
-                  <Link to={`/edit/${coupon._id}`}>
-                    <button className="profile-edit-button">
-                      Edit
-                    </button>
-                  </Link>
+                  {/* EDIT */}
+
+                  <button
+                    className="profile-edit-button"
+                    onClick={() =>
+                      navigate(`/edit/${coupon._id}`)
+                    }
+                  >
+                    Edit
+                  </button>
+
+                  {/* DELETE */}
 
                   <button
                     className="profile-delete-button"
