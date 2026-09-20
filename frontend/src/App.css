@@ -1,0 +1,985 @@
+/* =====================================================
+   GLOBAL
+   ===================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* =====================================================
+   HOME PAGE
+   ===================================================== */
+
+.home-page {
+  width: 100%;
+  min-height: 100vh;
+
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  margin: 0;
+  padding: 0;
+}
+
+
+/* =====================================================
+   HOME TOP BAR
+   ===================================================== */
+
+.top-bar {
+  width: 100%;
+  height: 100px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 45px;
+
+  background: rgba(255, 255, 255, 0.90);
+}
+
+.site-title {
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 1.1;
+
+  color: #151b26;
+}
+
+.top-buttons {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.top-buttons a {
+  text-decoration: none;
+}
+
+
+/* =====================================================
+   REGISTER BUTTON
+   ===================================================== */
+
+.register-btn {
+  padding: 14px 28px;
+
+  font-size: 18px;
+  font-weight: bold;
+
+  border: 2px solid #ed1c2e;
+  border-radius: 10px;
+
+  background: white;
+  color: #ed1c2e;
+
+  cursor: pointer;
+
+  transition: 0.3s;
+}
+
+.register-btn:hover {
+  background: #ed1c2e;
+  color: white;
+}
+
+
+/* =====================================================
+   LOGIN BUTTON
+   ===================================================== */
+
+.login-btn {
+  padding: 14px 30px;
+
+  font-size: 18px;
+  font-weight: bold;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #ed1c2e;
+  color: white;
+
+  cursor: pointer;
+
+  transition: 0.3s;
+}
+
+.login-btn:hover {
+  background: #c91525;
+}
+
+
+/* =====================================================
+   WELCOME SECTION
+   CENTER + BOTTOM TO TOP ANIMATION
+   ===================================================== */
+
+.welcome-section {
+  min-height: calc(100vh - 100px);
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+
+  padding: 40px;
+
+  overflow: hidden;
+}
+
+
+/* =====================================================
+   WELCOME MAIN TEXT
+   ===================================================== */
+
+.welcome-section h1 {
+  width: 100%;
+  max-width: 1100px;
+
+  margin: 0;
+
+  font-size: 62px;
+  line-height: 1.15;
+
+  font-weight: 700;
+
+  color: #151b26;
+
+  text-align: center;
+
+  /*
+    Start from bottom and move upward
+  */
+  animation: welcomeFromBottom 1.6s ease-out forwards;
+}
+
+
+/* =====================================================
+   RED WELCOME TEXT
+   ===================================================== */
+
+.welcome-section h1 span {
+  display: inline-block;
+
+  color: #ed1c2e;
+
+  font-weight: 800;
+
+  animation: redWelcomeFromBottom 1.9s ease-out forwards;
+}
+
+
+/* =====================================================
+   WELCOME ANIMATION
+   BOTTOM → CENTER
+   ===================================================== */
+
+@keyframes welcomeFromBottom {
+
+  0% {
+    opacity: 0;
+
+    transform: translateY(280px);
+  }
+
+  50% {
+    opacity: 0.7;
+
+    transform: translateY(80px);
+  }
+
+  75% {
+    opacity: 1;
+
+    transform: translateY(-15px);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform: translateY(0);
+  }
+}
+
+
+/* =====================================================
+   RED TEXT ANIMATION
+   ===================================================== */
+
+@keyframes redWelcomeFromBottom {
+
+  0% {
+    opacity: 0;
+
+    transform: translateY(300px);
+  }
+
+  50% {
+    opacity: 0.7;
+
+    transform: translateY(90px);
+  }
+
+  75% {
+    opacity: 1;
+
+    transform: translateY(-12px);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform: translateY(0);
+  }
+}
+
+
+/* =====================================================
+   LOGIN / REGISTER / ADD / EDIT PAGES
+   ===================================================== */
+
+.container {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+  align-items: center;
+
+  padding: 30px;
+
+ 
+}
+
+.container h1 {
+  color: #ed1c2e;
+
+  font-size: 40px;
+
+  margin-bottom: 25px;
+}
+
+.container form {
+  width: 420px;
+  max-width: 100%;
+
+  padding: 35px;
+
+  background: rgba(255, 255, 255, 0.95);
+
+  border-radius: 15px;
+}
+
+.container input,
+.container textarea,
+.container select {
+  width: 100%;
+
+  padding: 14px;
+
+  border: 1px solid #ccc;
+
+  border-radius: 8px;
+
+  font-size: 16px;
+}
+
+.container input:focus,
+.container textarea:focus,
+.container select:focus {
+  outline: none;
+
+  border: 2px solid #ed1c2e;
+}
+
+.container button {
+  padding: 13px 25px;
+
+  background: #ed1c2e;
+
+  color: white;
+
+  border: none;
+
+  border-radius: 8px;
+
+  font-size: 16px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.container button:hover {
+  background: #c91424;
+}
+
+.container p {
+  color: #222;
+
+  font-size: 16px;
+}
+
+.container a {
+  color: #ed1c2e;
+
+  font-weight: bold;
+
+  text-decoration: none;
+}
+
+
+/* =====================================================
+   PROFILE PAGE
+   ===================================================== */
+
+.profile-page {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+
+  flex-direction: row;
+
+  align-items: flex-start;
+
+  gap: 40px;
+
+  padding: 35px;
+
+  margin: 0;
+
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+
+/* =====================================================
+   PROFILE LEFT SIDE
+   ===================================================== */
+
+.profile-sidebar {
+  width: 280px;
+  min-width: 280px;
+
+  min-height: calc(100vh - 70px);
+
+  padding: 30px 25px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border-radius: 20px;
+
+  box-sizing: border-box;
+
+  flex-shrink: 0;
+}
+
+.profile-sidebar h1 {
+  color: #ed1c2e;
+
+  font-size: 34px;
+
+  text-align: left;
+
+  margin: 0 0 30px;
+}
+
+
+/* =====================================================
+   PROFILE DETAILS
+   ===================================================== */
+
+.profile-details {
+  border-top: 2px solid #eeeeee;
+
+  border-bottom: 2px solid #eeeeee;
+
+  padding: 20px 0;
+
+  margin-bottom: 25px;
+}
+
+.profile-info {
+  display: flex;
+
+  flex-direction: column;
+
+  margin-bottom: 20px;
+}
+
+.profile-info:last-child {
+  margin-bottom: 0;
+}
+
+.profile-info strong {
+  color: #ed1c2e;
+
+  font-size: 17px;
+
+  margin-bottom: 5px;
+}
+
+.profile-info span {
+  color: #222;
+
+  font-size: 17px;
+
+  word-break: break-word;
+}
+
+
+/* =====================================================
+   PROFILE BUTTONS
+   Only HOME + LOGOUT
+   ===================================================== */
+
+.profile-buttons {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 14px;
+}
+
+.profile-buttons a {
+  width: 100%;
+
+  text-decoration: none;
+}
+
+.profile-buttons button {
+  width: 100%;
+
+  padding: 14px 10px;
+
+  background: #ed1c2e;
+
+  color: white;
+
+  border: none;
+
+  border-radius: 8px;
+
+  font-size: 17px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.profile-buttons button:hover {
+  background: #c91424;
+}
+
+
+/* =====================================================
+   RIGHT SIDE - AVAILABLE COUPONS
+   ===================================================== */
+
+.profile-coupons {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 10px 20px;
+
+  box-sizing: border-box;
+}
+
+.profile-coupons h1 {
+  color: #ed1c2e;
+
+  font-size: 50px;
+
+  text-align: center;
+
+  margin: 0;
+}
+
+.profile-coupon-subtitle {
+  color: #222;
+
+  font-size: 20px;
+
+  text-align: center;
+
+  margin: 10px 0 30px;
+}
+
+
+/* =====================================================
+   COUPON LIST
+   ===================================================== */
+
+.profile-coupon-list {
+  width: 100%;
+
+  max-width: 1050px;
+
+  margin: 0 auto;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 25px;
+}
+/* =====================================================
+   COUPON SEARCH BAR
+   ===================================================== */
+
+.coupon-search {
+  width: 100%;
+  max-width: 700px;
+
+  margin: 0 auto 30px;
+
+  display: flex;
+  justify-content: center;
+}
+
+.coupon-search input {
+  width: 100%;
+
+  padding: 16px 20px;
+
+  font-size: 18px;
+
+  border: 2px solid #ed1c2e;
+
+  border-radius: 10px;
+
+  background: white;
+
+  color: #222;
+
+  outline: none;
+}
+
+.coupon-search input::placeholder {
+  color: #888;
+}
+
+.coupon-search input:focus {
+  border-color: #b91424;
+
+  box-shadow: 0 0 8px rgba(237, 28, 46, 0.2);
+}
+
+/* =====================================================
+   COUPON BOX
+   ===================================================== */
+
+.profile-coupon-box {
+  width: 100%;
+
+  min-height: 160px;
+
+  display: flex;
+
+  flex-direction: row;
+
+  align-items: center;
+
+  gap: 30px;
+
+  padding: 25px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 2px solid #ff6673;
+
+  border-radius: 18px;
+
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   COUPON CODE
+   ===================================================== */
+
+.profile-coupon-code {
+  width: 220px;
+
+  min-width: 220px;
+
+  padding: 25px 15px;
+
+  background: #ffe8ea;
+
+  border: 2px dashed #ff6673;
+
+  border-radius: 12px;
+
+  color: #b71929;
+
+  font-size: 27px;
+
+  font-weight: bold;
+
+  text-align: center;
+
+  word-break: break-word;
+}
+
+
+/* =====================================================
+   COUPON DETAILS
+   ===================================================== */
+
+.profile-coupon-details {
+  flex: 1;
+}
+
+.profile-coupon-details p {
+  color: #26364d;
+
+  font-size: 20px;
+
+  margin: 12px 0;
+}
+
+.profile-coupon-details strong {
+  color: #26364d;
+}
+
+.profile-coupon-details span {
+  color: #ed1c2e;
+
+  font-weight: bold;
+}
+
+
+/* =====================================================
+   EDIT / DELETE BUTTONS
+   ===================================================== */
+
+.profile-coupon-actions {
+  display: flex;
+
+  gap: 12px;
+
+  align-items: center;
+}
+
+.profile-coupon-actions a {
+  text-decoration: none;
+}
+
+.profile-edit-button,
+.profile-delete-button {
+  padding: 13px 22px;
+
+  background: #ed1c2e;
+
+  color: white;
+
+  border: none;
+
+  border-radius: 8px;
+
+  font-size: 16px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.profile-edit-button:hover,
+.profile-delete-button:hover {
+  background: #b91424;
+}
+
+
+/* =====================================================
+   NO COUPONS
+   ===================================================== */
+
+.no-profile-coupons {
+  width: 600px;
+
+  max-width: 90%;
+
+  margin: 50px auto;
+
+  padding: 40px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 2px solid #ff6673;
+
+  border-radius: 18px;
+
+  text-align: center;
+}
+
+.no-profile-coupons h2 {
+  color: #ed1c2e;
+
+  font-size: 28px;
+}
+
+.no-profile-coupons p {
+  color: #222;
+
+  font-size: 18px;
+}
+
+.red-button {
+  padding: 14px 25px;
+
+  background: #ed1c2e;
+
+  color: white;
+
+  border: none;
+
+  border-radius: 8px;
+
+  font-size: 17px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.red-button:hover {
+  background: #b91424;
+}
+
+
+/* =====================================================
+   PROFILE LOADING
+   ===================================================== */
+
+.profile-loading {
+  width: 100%;
+
+  min-height: 100vh;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  background-image: url("/bg.jpg");
+
+  background-size: cover;
+
+  background-position: center;
+}
+
+.profile-loading h2 {
+  color: #ed1c2e;
+}
+
+
+/* =====================================================
+   RESPONSIVE - TABLET
+   ===================================================== */
+
+@media (max-width: 1000px) {
+
+  .profile-page {
+    flex-direction: column;
+
+    padding: 20px;
+  }
+
+  .profile-sidebar {
+    width: 100%;
+
+    min-width: 0;
+
+    min-height: auto;
+  }
+
+  .profile-sidebar h1 {
+    text-align: center;
+  }
+
+  .profile-coupon-box {
+    flex-direction: column;
+
+    text-align: center;
+  }
+
+  .profile-coupon-code {
+    width: 100%;
+
+    min-width: 0;
+  }
+
+  .profile-coupon-details {
+    width: 100%;
+
+    text-align: center;
+  }
+
+  .profile-coupon-actions {
+    justify-content: center;
+  }
+
+  .welcome-section h1 {
+    font-size: 48px;
+  }
+
+  .top-bar {
+    padding: 0 25px;
+  }
+
+  .site-title {
+    font-size: 23px;
+  }
+
+  .top-buttons {
+    gap: 10px;
+  }
+
+  .register-btn,
+  .login-btn {
+    padding: 11px 18px;
+
+    font-size: 15px;
+  }
+}
+
+
+/* =====================================================
+   RESPONSIVE - MOBILE
+   ===================================================== */
+
+@media (max-width: 600px) {
+
+  .top-bar {
+    height: auto;
+
+    min-height: 100px;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    gap: 15px;
+
+    padding: 20px;
+  }
+
+  .site-title {
+    text-align: center;
+
+    font-size: 22px;
+  }
+
+  .top-buttons {
+    flex-wrap: wrap;
+
+    justify-content: center;
+  }
+
+  .welcome-section {
+    min-height: calc(100vh - 150px);
+
+    padding: 25px;
+  }
+
+  .welcome-section h1 {
+    font-size: 35px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  .container form {
+    width: 100%;
+
+    padding: 25px;
+  }
+
+  .container h1 {
+    font-size: 32px;
+
+    text-align: center;
+  }
+
+  .profile-page {
+    padding: 15px;
+
+    gap: 20px;
+  }
+
+  .profile-sidebar {
+    padding: 25px 20px;
+  }
+
+  .profile-sidebar h1 {
+    font-size: 30px;
+  }
+
+  .profile-coupons {
+    padding: 10px;
+  }
+
+  .profile-coupons h1 {
+    font-size: 38px;
+  }
+
+  .profile-coupon-subtitle {
+    font-size: 18px;
+  }
+
+  .profile-coupon-box {
+    padding: 20px;
+  }
+
+  .profile-coupon-code {
+    font-size: 23px;
+  }
+
+  .profile-coupon-details p {
+    font-size: 17px;
+  }
+
+  .profile-coupon-actions {
+    flex-direction: column;
+
+    width: 100%;
+  }
+
+  .profile-edit-button,
+  .profile-delete-button {
+    width: 150px;
+  }
+}

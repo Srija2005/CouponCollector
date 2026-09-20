@@ -1,0 +1,96 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.container {
+  text-align: center;
+  width: 450px;
+  max-width: 90%;
+  margin: 80px auto;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+h1 {
+  color: red;
+  font-size: 36px;
+  margin-bottom: 20px;
+}
+
+h2 {
+  color: #ff0015;
+}
+
+p {
+  color: black;
+  font-size: 18px;
+}
+
+button {
+  padding: 12px 25px;
+  margin: 10px;
+  border: none;
+  border-radius: 6px;
+  background-color: red;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #c91522;
+}
+
+input {
+  padding: 12px;
+  width: 250px;
+  max-width: 90%;
+  border: 1px solid #cccccc;
+  border-radius: 5px;
+  font-size: 16px;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.coupon {
+  background: white;
+  width: 400px;
+  max-width: 90%;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #ccc;
+  box-sizing: border-box;
+}
+
+.coupon h2 {
+  color: #007bff;
+  margin-bottom: 10px;
+}
+
+.coupon p {
+  color: #555;
+  font-size: 16px;
+}
+
+a {
+  color: red;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:hover {
+  text-decoration: underline;
+}
