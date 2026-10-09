@@ -538,6 +538,79 @@ app.put(
     }
   }
 );
+// ================= PATCH COUPON (PARTIAL UPDATE) =================
+
+app.patch(
+  "/coupons/:id",
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const { code, discount, expiryDate } = req.body;
+      const updates = {};
+
+      if (code !== undefined) {
+        if (typeof code !== "string" || code.trim() === "") {
+          return res.status(400).json({
+            message: "Coupon code cannot be empty"
+          });
+        }
+        updates.code = code.trim();
+      }
+
+      if (discount !== undefined) {
+        if (discount === "" || !Number.isFinite(Number(discount))) {
+          return res.status(400).json({
+            message: "Discount must be a valid number"
+          });
+        }
+        updates.discount = Number(discount);
+      }
+
+      if (expiryDate !== undefined) {
+        if (typeof expiryDate !== "string" || expiryDate.trim() === "") {
+          return res.status(400).json({
+            message: "Expiry date cannot be empty"
+          });
+        }
+        updates.expiryDate = expiryDate.trim();
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          message: "Please provide at least one field to update"
+        });
+      }
+
+      const updatedCoupon = await Coupon.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          createdBy: req.user.userId
+        },
+        { $set: updates },
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
+      if (!updatedCoupon) {
+        return res.status(404).json({
+          message: "Coupon not found or you are not allowed to edit it"
+        });
+      }
+
+      return res.status(200).json({
+        message: "Coupon updated successfully",
+        coupon: updatedCoupon
+      });
+    } catch (error) {
+      console.log("Patch coupon error:", error);
+      return res.status(500).json({
+        message: "Error updating coupon"
+      });
+    }
+  }
+);
 
 // ================= DELETE COUPON =================
 
