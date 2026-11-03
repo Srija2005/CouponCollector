@@ -5,7 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AddCoupon from "./pages/AddCoupon";
 import EditCoupon from "./pages/EditCoupon";
-import Profile from "./pages/Profile";
+import Profile from "./pages/profile";
 
 import "./App.css";
 
