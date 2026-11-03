@@ -1,11 +1,43 @@
+
 const express = require("express");
-const mongoose = require("mongoose");
+const { Pool } = require("pg");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
+
 require("dotenv").config();
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// =============== POSTGRESQL CONNECTION ===============
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+pool.on("error", (error) => {
+  console.error("Database error:", error);
+});
+
+async function connectDatabase() {
+  try {
+    await pool.query("SELECT 1");
+    console.log("Neon PostgreSQL connected successfully");
+  } catch (error) {
+    console.error("Database connection error:", error);
+  }
+}
+
+// =============== EMAIL CONFIGURATION ===============
+
 const emailTransporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -13,118 +45,33 @@ const emailTransporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD
   }
 });
-emailTransporter.verify((error, success) => {
-  if (error) {
-    console.error("EMAIL CONFIGURATION ERROR:");
-    console.error(error);
-  } else {
-    console.log("EMAIL SERVER IS READY");
-  }
-});
 
-const app = express();
+// Convert database coupon fields into frontend-friendly fields
+function formatCoupon(row) {
+  return {
+    _id: String(row.id),
+    id: row.id,
+    code: row.code,
+    discount: Number(row.discount),
+    expiryDate: row.expiry_date,
+    createdBy: row.created_by,
+    expiryNotificationSent: row.expiry_notification_sent,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
-app.use(cors());
-app.use(express.json());
-
-// ================= MONGODB CONNECTION =================
-
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB connected successfully");
-
-    console.log("Running expiry check manually...");
-    checkExpiringCoupons();
-  })
-  .catch((error) => {
-    console.error("MongoDB connection error:", error);
-  });
-
-// ================= USER SCHEMA =================
-const userSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true
-    },
-
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true
-    },
-
-    password: {
-      type: String,
-      required: true
-    },
-
-    role: {
-      type: String,
-      default: "admin"
-    }
-  },
-  {
-    timestamps: true
-  }
-);
-
-const User = mongoose.model("User", userSchema);
-// ================= COUPON SCHEMA =================
-
-const couponSchema = new mongoose.Schema(
-  {
-    code: {
-      type: String,
-      required: true
-    },
-
-    discount: {
-      type: Number,
-      required: true
-    },
-
-    expiryDate: {
-      type: String,
-      required: true
-    },
-
-    // User who created this coupon
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
-    }
-  },
-  {
-    timestamps: true
-  }
-);
-
-const Coupon = mongoose.model("Coupon", couponSchema);
-
-// ================= HOME =================
+// =============== HOME ===============
 
 app.get("/", (req, res) => {
-  res.send(
-    "Coupons collector Backend is Running"
-  );
+  res.send("Coupons collector Backend is Running");
 });
 
-// ================= REGISTER =================
+// =============== REGISTER ===============
 
 app.post("/register", async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      password
-    } = req.body;
-
-    console.log("Registration request:");
-    console.log("Name:", name);
-    console.log("Email:", email);
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -132,41 +79,39 @@ app.post("/register", async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({
-      email: email.toLowerCase()
-    });
+    const normalizedEmail = email.toLowerCase();
 
-    if (existingUser) {
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [normalizedEmail]
+    );
+
+    if (existingUser.rows.length > 0) {
       return res.status(400).json({
         message: "Email already registered"
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      `INSERT INTO users (name, email, password, role)
+       VALUES ($1, $2, $3, $4)`,
+      [name, normalizedEmail, hashedPassword, "admin"]
     );
-
-    const user = new User({
-      name: name,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      role: "admin"
-    });
-
-    await user.save();
-
-    console.log("User registered successfully");
 
     res.status(201).json({
       message: "Registration successful"
     });
 
   } catch (error) {
-    console.log(
-      "Registration error:",
-      error
-    );
+    console.error("Registration error:", error);
+
+    if (error.code === "23505") {
+      return res.status(400).json({
+        message: "Email already registered"
+      });
+    }
 
     res.status(500).json({
       message: "Registration failed"
@@ -174,19 +119,11 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// ================= LOGIN =================
+// =============== LOGIN ===============
 
 app.post("/login", async (req, res) => {
   try {
-    const {
-      email,
-      password
-    } = req.body;
-
-    console.log("--------------------------------");
-    console.log("LOGIN REQUEST");
-    console.log("Email:", email);
-    console.log("--------------------------------");
+    const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -194,36 +131,33 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: email.toLowerCase()
-    });
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email.toLowerCase()]
+    );
 
-    if (!user) {
-      console.log("User not found");
-
+    if (result.rows.length === 0) {
       return res.status(401).json({
         message: "Invalid email or password"
       });
     }
 
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    const user = result.rows[0];
+
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!passwordMatch) {
-      console.log("Password does not match");
-
       return res.status(401).json({
         message: "Invalid email or password"
       });
     }
 
-    // Create JWT token
     const token = jwt.sign(
       {
-        userId: user._id,
+        userId: user.id,
         email: user.email,
         role: user.role
       },
@@ -233,15 +167,11 @@ app.post("/login", async (req, res) => {
       }
     );
 
-    console.log("Login successful");
-
     res.json({
       message: "Login successful",
-
-      token: token,
-
+      token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role
@@ -249,10 +179,7 @@ app.post("/login", async (req, res) => {
     });
 
   } catch (error) {
-    console.log(
-      "Login error:",
-      error
-    );
+    console.error("Login error:", error);
 
     res.status(500).json({
       message: "Login failed"
@@ -260,12 +187,11 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ================= VERIFY LOGIN =================
+// =============== VERIFY LOGIN ===============
 
 function verifyAdmin(req, res, next) {
   try {
-    const authHeader =
-      req.headers.authorization;
+    const authHeader = req.headers.authorization;
 
     if (!authHeader) {
       return res.status(401).json({
@@ -273,25 +199,18 @@ function verifyAdmin(req, res, next) {
       });
     }
 
-    const parts =
-      authHeader.split(" ");
+    const parts = authHeader.split(" ");
 
-    if (
-      parts.length !== 2 ||
-      parts[0] !== "Bearer"
-    ) {
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
       return res.status(401).json({
         message: "Invalid authorization format"
       });
     }
 
-    const token = parts[1];
-
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+    const decoded = jwt.verify(
+      parts[1],
+      process.env.JWT_SECRET
+    );
 
     if (decoded.role !== "admin") {
       return res.status(403).json({
@@ -299,16 +218,11 @@ function verifyAdmin(req, res, next) {
       });
     }
 
-    // Store logged-in user information
     req.user = decoded;
-
     next();
 
   } catch (error) {
-    console.log(
-      "Authorization error:",
-      error
-    );
+    console.error("Authorization error:", error);
 
     return res.status(401).json({
       message: "Invalid or expired token"
@@ -316,487 +230,347 @@ function verifyAdmin(req, res, next) {
   }
 }
 
-// ================= GET USER'S COUPONS =================
+// =============== GET USER'S COUPONS ===============
 
-app.get(
-  "/coupons",
-  verifyAdmin,
-  async (req, res) => {
-    try {
+app.get("/coupons", verifyAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM coupons
+       WHERE created_by = $1
+       ORDER BY created_at DESC`,
+      [req.user.userId]
+    );
 
-      // Only get coupons created by
-      // the currently logged-in user
-      const coupons =
-        await Coupon.find({
-          createdBy: req.user.userId
-        }).sort({
-          createdAt: -1
-        });
+    res.json(result.rows.map(formatCoupon));
 
-      res.json(coupons);
+  } catch (error) {
+    console.error("Get coupons error:", error);
 
-    } catch (error) {
+    res.status(500).json({
+      message: "Error getting coupons"
+    });
+  }
+});
 
-      console.log(
-        "Get coupons error:",
-        error
-      );
+// =============== GET ONE COUPON ===============
 
-      res.status(500).json({
-        message: "Error getting coupons"
+app.get("/coupons/:id", verifyAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM coupons
+       WHERE id = $1 AND created_by = $2`,
+      [req.params.id, req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Coupon not found or you are not allowed to access it"
       });
     }
+
+    res.json(formatCoupon(result.rows[0]));
+
+  } catch (error) {
+    console.error("Get coupon error:", error);
+
+    res.status(500).json({
+      message: "Error getting coupon"
+    });
   }
-);
+});
 
-// ================= GET ONE USER'S COUPON =================
+// =============== ADD COUPON ===============
 
-app.get(
-  "/coupons/:id",
-  verifyAdmin,
-  async (req, res) => {
-    try {
+app.post("/coupons", verifyAdmin, async (req, res) => {
+  try {
+    const { code, discount, expiryDate } = req.body;
 
-      // Find coupon only if it belongs
-      // to the logged-in user
-      const coupon =
-        await Coupon.findOne({
-          _id: req.params.id,
-          createdBy: req.user.userId
-        });
-
-      if (!coupon) {
-        return res.status(404).json({
-          message:
-            "Coupon not found or you are not allowed to access it"
-        });
-      }
-
-      res.json(coupon);
-
-    } catch (error) {
-
-      console.log(
-        "Get coupon error:",
-        error
-      );
-
-      res.status(500).json({
-        message: "Error getting coupon"
+    if (
+      !code ||
+      discount === undefined ||
+      discount === "" ||
+      !expiryDate ||
+      !Number.isFinite(Number(discount))
+    ) {
+      return res.status(400).json({
+        message: "Please fill all fields correctly"
       });
     }
-  }
-);
 
-// ================= ADD COUPON =================
-
-app.post(
-  "/coupons",
-  verifyAdmin,
-  async (req, res) => {
-    try {
-
-      const {
+    const result = await pool.query(
+      `INSERT INTO coupons
+       (code, discount, expiry_date, created_by)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [
         code,
-        discount,
-        expiryDate
-      } = req.body;
+        Number(discount),
+        expiryDate,
+        req.user.userId
+      ]
+    );
 
-      console.log(
-        "ADD COUPON REQUEST"
-      );
+    res.status(201).json({
+      message: "Coupon added successfully",
+      coupon: formatCoupon(result.rows[0])
+    });
 
-      console.log(req.body);
+  } catch (error) {
+    console.error("Add coupon error:", error);
 
-      if (
-        !code ||
-        discount === undefined ||
-        discount === "" ||
-        !expiryDate
-      ) {
-        return res.status(400).json({
-          message: "Please fill all fields"
-        });
-      }
+    res.status(500).json({
+      message: "Error adding coupon"
+    });
+  }
+});
 
-      // Create coupon and connect it
-      // with the logged-in user
-      const coupon = new Coupon({
-        code: code,
-        discount: Number(discount),
-        expiryDate: expiryDate,
+// =============== EDIT COUPON ===============
 
-        createdBy:
-          req.user.userId
-      });
+app.put("/coupons/:id", verifyAdmin, async (req, res) => {
+  try {
+    const { code, discount, expiryDate } = req.body;
 
-      await coupon.save();
-
-      console.log(
-        "Coupon added successfully"
-      );
-
-      res.status(201).json({
-        message:
-          "Coupon added successfully",
-
-        coupon: coupon
-      });
-
-    } catch (error) {
-
-      console.log(
-        "Add coupon error:",
-        error
-      );
-
-      res.status(500).json({
-        message: "Error adding coupon"
+    if (
+      !code ||
+      discount === undefined ||
+      discount === "" ||
+      !expiryDate ||
+      !Number.isFinite(Number(discount))
+    ) {
+      return res.status(400).json({
+        message: "Please fill all fields correctly"
       });
     }
-  }
-);
 
-// ================= EDIT COUPON =================
-
-app.put(
-  "/coupons/:id",
-  verifyAdmin,
-  async (req, res) => {
-    try {
-
-      const {
+    const result = await pool.query(
+      `UPDATE coupons
+       SET code = $1,
+           discount = $2,
+           expiry_date = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4 AND created_by = $5
+       RETURNING *`,
+      [
         code,
-        discount,
-        expiryDate
-      } = req.body;
+        Number(discount),
+        expiryDate,
+        req.params.id,
+        req.user.userId
+      ]
+    );
 
-      console.log(
-        "EDIT COUPON REQUEST"
-      );
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Coupon not found or you are not allowed to edit it"
+      });
+    }
 
-      console.log(req.body);
+    res.json({
+      message: "Coupon updated successfully",
+      coupon: formatCoupon(result.rows[0])
+    });
 
-      if (
-        !code ||
-        discount === undefined ||
-        discount === "" ||
-        !expiryDate
-      ) {
+  } catch (error) {
+    console.error("Edit coupon error:", error);
+
+    res.status(500).json({
+      message: "Error updating coupon"
+    });
+  }
+});
+
+// =============== PATCH COUPON ===============
+
+app.patch("/coupons/:id", verifyAdmin, async (req, res) => {
+  try {
+    const { code, discount, expiryDate } = req.body;
+    const updates = [];
+    const values = [];
+
+    if (code !== undefined) {
+      if (typeof code !== "string" || !code.trim()) {
         return res.status(400).json({
-          message: "Please fill all fields"
+          message: "Coupon code cannot be empty"
         });
       }
 
-      // Update only if the coupon belongs
-      // to the logged-in user
-      const updatedCoupon =
-        await Coupon.findOneAndUpdate(
-          {
-            _id: req.params.id,
-            createdBy: req.user.userId
-          },
-          {
-            code: code,
-            discount: Number(discount),
-            expiryDate: expiryDate
-          },
-          {
-            new: true,
-            runValidators: true
-          }
-        );
-
-      if (!updatedCoupon) {
-        return res.status(404).json({
-          message:
-            "Coupon not found or you are not allowed to edit it"
-        });
-      }
-
-      console.log(
-        "Coupon updated successfully"
-      );
-
-      res.json({
-        message:
-          "Coupon updated successfully",
-
-        coupon: updatedCoupon
-      });
-
-    } catch (error) {
-
-      console.log(
-        "Edit coupon error:",
-        error
-      );
-
-      res.status(500).json({
-        message: "Error updating coupon"
-      });
+      values.push(code.trim());
+      updates.push(`code = $${values.length}`);
     }
-  }
-);
-// ================= PATCH COUPON (PARTIAL UPDATE) =================
 
-app.patch(
-  "/coupons/:id",
-  verifyAdmin,
-  async (req, res) => {
-    try {
-      const { code, discount, expiryDate } = req.body;
-      const updates = {};
-
-      if (code !== undefined) {
-        if (typeof code !== "string" || code.trim() === "") {
-          return res.status(400).json({
-            message: "Coupon code cannot be empty"
-          });
-        }
-        updates.code = code.trim();
-      }
-
-      if (discount !== undefined) {
-        if (discount === "" || !Number.isFinite(Number(discount))) {
-          return res.status(400).json({
-            message: "Discount must be a valid number"
-          });
-        }
-        updates.discount = Number(discount);
-      }
-
-      if (expiryDate !== undefined) {
-        if (typeof expiryDate !== "string" || expiryDate.trim() === "") {
-          return res.status(400).json({
-            message: "Expiry date cannot be empty"
-          });
-        }
-        updates.expiryDate = expiryDate.trim();
-      }
-
-      if (Object.keys(updates).length === 0) {
+    if (discount !== undefined) {
+      if (discount === "" || !Number.isFinite(Number(discount))) {
         return res.status(400).json({
-          message: "Please provide at least one field to update"
+          message: "Discount must be a valid number"
         });
       }
 
-      const updatedCoupon = await Coupon.findOneAndUpdate(
-        {
-          _id: req.params.id,
-          createdBy: req.user.userId
-        },
-        { $set: updates },
-        {
-          new: true,
-          runValidators: true
-        }
-      );
+      values.push(Number(discount));
+      updates.push(`discount = $${values.length}`);
+    }
 
-      if (!updatedCoupon) {
-        return res.status(404).json({
-          message: "Coupon not found or you are not allowed to edit it"
+    if (expiryDate !== undefined) {
+      if (typeof expiryDate !== "string" || !expiryDate.trim()) {
+        return res.status(400).json({
+          message: "Expiry date cannot be empty"
         });
       }
 
-      return res.status(200).json({
-        message: "Coupon updated successfully",
-        coupon: updatedCoupon
-      });
-    } catch (error) {
-      console.log("Patch coupon error:", error);
-      return res.status(500).json({
-        message: "Error updating coupon"
+      values.push(expiryDate.trim());
+      updates.push(`expiry_date = $${values.length}`);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        message: "Please provide at least one field to update"
       });
     }
-  }
-);
 
-// ================= DELETE COUPON =================
+    updates.push("updated_at = CURRENT_TIMESTAMP");
 
-app.delete(
-  "/coupons/:id",
-  verifyAdmin,
-  async (req, res) => {
-    try {
+    values.push(req.params.id);
+    const idPosition = values.length;
 
-      console.log(
-        "DELETE COUPON:",
-        req.params.id
-      );
+    values.push(req.user.userId);
+    const userPosition = values.length;
 
-      // Delete only if the coupon belongs
-      // to the logged-in user
-      const deletedCoupon =
-        await Coupon.findOneAndDelete({
-          _id: req.params.id,
-          createdBy: req.user.userId
-        });
+    const result = await pool.query(
+      `UPDATE coupons
+       SET ${updates.join(", ")}
+       WHERE id = $${idPosition}
+         AND created_by = $${userPosition}
+       RETURNING *`,
+      values
+    );
 
-      if (!deletedCoupon) {
-        return res.status(404).json({
-          message:
-            "Coupon not found or you are not allowed to delete it"
-        });
-      }
-
-      console.log(
-        "Coupon deleted successfully"
-      );
-
-      res.json({
-        message:
-          "Coupon deleted successfully"
-      });
-
-    } catch (error) {
-
-      console.log(
-        "Delete coupon error:",
-        error
-      );
-
-      res.status(500).json({
-        message: "Error deleting coupon"
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Coupon not found or you are not allowed to edit it"
       });
     }
+
+    res.json({
+      message: "Coupon updated successfully",
+      coupon: formatCoupon(result.rows[0])
+    });
+
+  } catch (error) {
+    console.error("Patch coupon error:", error);
+
+    res.status(500).json({
+      message: "Error updating coupon"
+    });
   }
-);
+});
 
-// ================= SERVER =================
+// =============== DELETE COUPON ===============
 
-const PORT =
-  process.env.PORT || 5000;
+app.delete("/coupons/:id", verifyAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM coupons
+       WHERE id = $1 AND created_by = $2
+       RETURNING id`,
+      [req.params.id, req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Coupon not found or you are not allowed to delete it"
+      });
+    }
+
+    res.json({
+      message: "Coupon deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Delete coupon error:", error);
+
+    res.status(500).json({
+      message: "Error deleting coupon"
+    });
+  }
+});
+
+// =============== EXPIRY EMAIL REMINDERS ===============
+
+
 async function checkExpiringCoupons() {
   try {
-    console.log("Checking for coupons expiring in 2 days...");
+    console.log("Checking coupons expiring in 2 days...");
 
-    const today = new Date();
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.log("Email credentials are not configured.");
+      return;
+    }
 
-    const expiryDate = new Date(today);
-    expiryDate.setDate(today.getDate() + 2);
+    const result = await pool.query(
+      `SELECT c.*, u.name, u.email
+       FROM coupons c
+       JOIN users u ON c.created_by = u.id
+       WHERE c.expiry_date = TO_CHAR(CURRENT_DATE + INTERVAL '2 days', 'YYYY-MM-DD')
+       AND c.expiry_notification_sent = FALSE`
+    );
 
-    const year = expiryDate.getFullYear();
-    const month = String(expiryDate.getMonth() + 1).padStart(2, "0");
-    const day = String(expiryDate.getDate()).padStart(2, "0");
+    console.log("Coupons found:", result.rows.length);
 
-    const targetDate = `${year}-${month}-${day}`;
-
-    console.log("Checking expiry date:", targetDate);
-
-    const coupons = await Coupon.find({
-      expiryDate: targetDate
-    }).populate("createdBy", "name email");
-
-    console.log("Coupons found:", coupons.length);
-
-    for (const coupon of coupons) {
-
-      if (!coupon.createdBy) {
-        console.log(
-          `No user found for coupon ${coupon.code}`
-        );
-        continue;
-      }
-
-      if (!coupon.createdBy.email) {
-        console.log(
-          `No email found for coupon ${coupon.code}`
-        );
-        continue;
-      }
-
-      console.log(
-        `Sending expiry email to: ${coupon.createdBy.email}`
-      );
-
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-
-        // IMPORTANT:
-        // This is the coupon owner's email
-        to: coupon.createdBy.email,
-
-        subject: `Coupon "${coupon.code}" expires in 2 days`,
-
-        html: `
-          <div style="font-family: Arial, sans-serif;">
-            <h2 style="color: #ed1c2e;">
-              Coupon Expiry Reminder
-            </h2>
-
-            <p>
-              Hello ${coupon.createdBy.name},
-            </p>
-
-            <p>
-              Your coupon is going to expire in
-              <strong>2 days</strong>.
-            </p>
-
-            <p>
-              <strong>Coupon Code:</strong>
-              ${coupon.code}
-            </p>
-
-            <p>
-              <strong>Discount:</strong>
-              ${coupon.discount}%
-            </p>
-
-            <p>
-              <strong>Expiry Date:</strong>
-              ${coupon.expiryDate}
-            </p>
-
-            <p>
-              Please use or update this coupon before it expires.
-            </p>
-
-            <br />
-
-            <p>
-              Thank you,<br />
-              Coupons collector
-            </p>
-          </div>
-        `
-      };
-
+    for (const coupon of result.rows) {
       try {
-        await emailTransporter.sendMail(mailOptions);
+        await emailTransporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: coupon.email,
+          subject: `Coupon "${coupon.code}" expires in 2 days`,
+          html: `
+            <div style="font-family: Arial, sans-serif;">
+              <h2>Coupon Expiry Reminder</h2>
+              <p>Hello ${coupon.name},</p>
+              <p>Your coupon expires in <strong>2 days</strong>.</p>
+              <p><strong>Coupon Code:</strong> ${coupon.code}</p>
+              <p><strong>Discount:</strong> ${coupon.discount}%</p>
+              <p><strong>Expiry Date:</strong> ${coupon.expiry_date}</p>
+              <p>Please use or update this coupon before it expires.</p>
+              <p>Thank you,<br/>Coupons Collector</p>
+            </div>
+          `
+        });
 
-        console.log(
-          `Expiry email sent to ${coupon.createdBy.email}`
+        await pool.query(
+          `UPDATE coupons
+           SET expiry_notification_sent = TRUE
+           WHERE id = $1`,
+          [coupon.id]
         );
 
-        coupon.expiryNotificationSent = true;
-
-        await coupon.save();
+        console.log("Expiry email sent to:", coupon.email);
 
       } catch (emailError) {
         console.error(
-          `Email failed for coupon ${coupon.code}:`,
+          "Email failed for coupon:",
+          coupon.code,
           emailError.message
         );
       }
     }
 
   } catch (error) {
-    console.error(
-      "Expiry notification error:",
-      error.message
-    );
+    console.error("Expiry notification error:", error);
   }
 }
-cron.schedule("0 9 * * *", () => {
-  console.log("Daily coupon expiry check started");
 
-  checkExpiringCoupons();
-});
+// Run every day at 9 AM (server timezone)
+cron.schedule("0 9 * * *", checkExpiringCoupons);
 
-app.listen(PORT, () => {
-  console.log(
-    `Server running on port ${PORT}`
-  );
-});
+// =============== START SERVER ===============
+
+const PORT = process.env.PORT || 5000;
+
+async function startServer() {
+  await connectDatabase();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer();
