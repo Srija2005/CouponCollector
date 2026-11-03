@@ -32,7 +32,7 @@ function AddCoupon() {
     try {
 
       const response = await fetch(
-        "http://localhost:5000/coupons",
+        "https://couponcollector.onrender.com/coupons",
         {
           method: "POST",
 

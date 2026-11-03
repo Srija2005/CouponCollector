@@ -16,7 +16,7 @@ function Register() {
     try {
 
       const response = await fetch(
-        "http://localhost:5000/register",
+        "https://couponcollector.onrender.com/register",
         {
           method: "POST",
 

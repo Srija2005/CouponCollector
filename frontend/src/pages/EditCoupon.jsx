@@ -25,7 +25,7 @@ function EditCoupon() {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/coupons/${id}`,
+          `https://couponcollector.onrender.com/coupons/${id}`,
           {
             method: "GET",
             headers: {
@@ -93,7 +93,7 @@ function EditCoupon() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/coupons/${id}`,
+       `https://couponcollector.onrender.com/coupons/${id}`,
         {
           method: "PUT",
           headers: {

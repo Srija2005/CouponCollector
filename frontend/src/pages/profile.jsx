@@ -48,7 +48,7 @@ function Profile() {
     async function loadCoupons() {
       try {
         const response = await fetch(
-          "http://localhost:5000/coupons",
+         "https://couponcollector.onrender.com/coupons",
           {
             method: "GET",
             headers: {
@@ -105,7 +105,7 @@ function Profile() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/coupons/${id}`,
+        `https://couponcollector.onrender.com/coupons/${id}`,
         {
           method: "DELETE",
           headers: {
